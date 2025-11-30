@@ -7,28 +7,64 @@ const CartContext = createContext();
 // Provide the context to the component tree
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
+  // Store custom images and coordinates separately (can't store File in localStorage)
+  const [customImages, setCustomImages] = useState(new Map());
+  const [customCoordinates, setCustomCoordinates] = useState(new Map());
 
   // Load cart data from localStorage on initial render
   useEffect(() => {
-    const storedCart = localStorage.getItem("cartItems");
-    if (storedCart) {
-      setCartItems(JSON.parse(storedCart));
+    if (typeof window !== 'undefined') {
+      const storedCart = localStorage.getItem("cartItems");
+      if (storedCart) {
+        setCartItems(JSON.parse(storedCart));
+      }
+      // Load custom coordinates from localStorage
+      const storedCoordinates = localStorage.getItem("customCoordinates");
+      if (storedCoordinates) {
+        try {
+          setCustomCoordinates(new Map(JSON.parse(storedCoordinates)));
+        } catch (e) {
+          console.error("Error loading custom coordinates:", e);
+        }
+      }
     }
   }, []);
 
   // Save cart data to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem("cartItems", JSON.stringify(cartItems));
-  }, [cartItems]);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("cartItems", JSON.stringify(cartItems));
+      // Save custom coordinates to localStorage (File objects are stored in memory only)
+      const coordinatesArray = Array.from(customCoordinates.entries());
+      localStorage.setItem("customCoordinates", JSON.stringify(coordinatesArray));
+    }
+  }, [cartItems, customCoordinates]);
 
   // Function to add an item to the cart
-  const addItemToCart = (item) => {
+  const addItemToCart = (item, customImage = null, customCaseCoordinates = null) => {
     setCartItems((prevItems) => [...prevItems, item]);
+    // Store custom image and coordinates if provided
+    if (customImage && item.id) {
+      setCustomImages((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(item.id, customImage);
+        return newMap;
+      });
+    }
+    if (customCaseCoordinates && item.id) {
+      setCustomCoordinates((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(item.id, customCaseCoordinates);
+        return newMap;
+      });
+    }
   };
 
   // remove all items from cart
   const clearCart = () => {
     setCartItems([]);
+    setCustomImages(new Map());
+    setCustomCoordinates(new Map());
   };
 
   // Function to remove an item from the cart
@@ -42,11 +78,41 @@ export const CartProvider = ({ children }) => {
     }
 
     setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+    // Clean up custom image and coordinates
+    setCustomImages((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(itemId);
+      return newMap;
+    });
+    setCustomCoordinates((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(itemId);
+      return newMap;
+    });
+  };
+
+  // Function to get custom image for a cart item
+  const getCustomImage = (itemId) => {
+    return customImages.get(itemId) || null;
+  };
+
+  // Function to get custom coordinates for a cart item
+  const getCustomCoordinates = (itemId) => {
+    return customCoordinates.get(itemId) || null;
   };
 
   return (
     <CartContext.Provider
-      value={{ cartItems, addItemToCart, removeItemFromCart, clearCart }}
+      value={{ 
+        cartItems, 
+        addItemToCart, 
+        removeItemFromCart, 
+        clearCart,
+        getCustomImage,
+        getCustomCoordinates,
+        customImages,
+        customCoordinates
+      }}
     >
       {children}
     </CartContext.Provider>
