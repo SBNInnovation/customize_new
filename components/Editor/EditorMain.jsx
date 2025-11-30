@@ -94,32 +94,43 @@ function EditorMain({ id, phone, product }) {
     )
       return alert("Please enter the size of your laptop");
     setLoading(true);
-    const img = await UploadImage(image);
-    if (!img.success) {
-      setLoading(false);
-      return alert("Failed to upload image");
-    }
 
     const variant =
       id === "laptopsleeves"
         ? `Height : ${laptopSize?.height} , Width : ${laptopSize?.width} (In Inches)`
         : "Custom Design";
 
+    const itemId = Math.floor(Math.random() * 1000);
+    
+    // Create a preview URL for display in cart (using blob URL)
+    const previewUrl = URL.createObjectURL(image);
+    
     const data = {
       name: !phone ? design.title : singleModel?.name,
       qty: 1,
-      image: img?.data?.url,
+      image: previewUrl, // Use blob URL for preview (will send actual file in order)
       variant: !phone
         ? variant
         : singleModel?.caseTypes.find((item) => item._id === activeVariant)
             ?.name,
-      id: Math.floor(Math.random() * 1000),
+      id: itemId,
       price: !phone
         ? design.price
         : singleModel?.caseTypes.find((item) => item._id === activeVariant)
             ?.price,
     };
-    addItemToCart(data);
+
+    // Create coordinates object (default center position, can be updated with actual crop/position data)
+    const customCaseCoordinates = {
+      x: 0, // x position (can be updated based on actual positioning)
+      y: 0, // y position (can be updated based on actual positioning)
+      scale: 1, // scale factor (can be updated based on actual scaling)
+      rotation: 0, // rotation angle (can be updated based on actual rotation)
+    };
+
+    // Pass customImage (File) and coordinates to addItemToCart
+    // The actual image file will be sent directly in the order, not uploaded to imgbb
+    addItemToCart(data, image, customCaseCoordinates);
     alert("Item added to cart");
     setImage(null);
     setLoading(false);

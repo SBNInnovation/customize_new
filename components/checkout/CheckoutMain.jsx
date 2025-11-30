@@ -145,7 +145,8 @@ function CheckoutMain() {
       data.name === "" ||
       data.phone === "" ||
       data.district === "" ||
-      data.address === ""
+      data.address === "" ||
+      data.email === ""
     ) {
       alert("Please fill all the required fields");
       return false;
@@ -231,8 +232,7 @@ function CheckoutMain() {
 
               <div className="mb-4">
                 <label className="block text-gray-600 mb-1">
-                  Email (optional: We'll send order confirmation and tracking
-                  updates here)
+                  Email *
                 </label>
                 <input
                   onChange={(e) => {
