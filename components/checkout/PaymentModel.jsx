@@ -18,7 +18,7 @@ export default function PaymentModal({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [order, setOrder] = useState(null);
-  const { clearCart } = useCart();
+  const { clearCart, getCustomImage, getCustomCoordinates } = useCart();
 
   if (!isOpen) return null;
 
@@ -27,27 +27,83 @@ export default function PaymentModal({
   };
 
   const handleUpload = async () => {
+    if (!file) {
+      alert("Please upload the payment screenshot");
+      return;
+    }
+    
     setLoading(true);
-    const output = {
-      data,cart,promo,grandTotal,file,paymentQr
+
+    // Get custom images and coordinates for cart items
+    // For now, we'll use the first custom image found (can be extended to handle multiple)
+    let customImage = null;
+    let customCaseCoordinates = null;
+
+    // Find the first cart item with a custom image
+    for (const item of cart) {
+      const img = getCustomImage(item.id);
+      const coords = getCustomCoordinates(item.id);
+      if (img) {
+        customImage = img;
+        customCaseCoordinates = coords || {};
+        break; // Use first custom image found
+      }
     }
 
-    const res = await createOrder(
-      data,
-      cart,
-      promo,
-      grandTotal,
-      file,
-      paymentQr.name
-    );
-
-    if (res) {
-      setSuccess(true);
-      setOrder(res);
-      clearCart();
-      window.location.href = ("https://casemandu.com.np/order/" + res._id)
+    // If no custom image found but we have coordinates, still send coordinates
+    if (!customImage && customCaseCoordinates) {
+      // Keep coordinates even without image
     }
-    setLoading(false);
+
+    try {
+      // Validate cart before sending
+      if (!cart || !Array.isArray(cart) || cart.length === 0) {
+        alert("Your cart is empty. Please add items to cart before placing order.");
+        setLoading(false);
+        return;
+      }
+
+      // Validate cart items have required fields
+      const validCartItems = cart.filter(item => 
+        item && 
+        item.name && 
+        item.price !== undefined && 
+        item.price !== null && 
+        !isNaN(Number(item.price))
+      );
+
+      if (validCartItems.length === 0) {
+        alert("No valid order items. Please check your cart items have name and price.");
+        setLoading(false);
+        return;
+      }
+
+      // Use validated cart items
+      const res = await createOrder(
+        data,
+        validCartItems,
+        promo,
+        grandTotal,
+        file,
+        paymentQr.name,
+        customImage,
+        customCaseCoordinates
+      );
+
+      if (res && res._id) {
+        setSuccess(true);
+        setOrder(res);
+        clearCart();
+        window.location.href = ("https://casemandu.com.np/order/" + res._id)
+      } else {
+        alert("Order creation failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Order creation error:", error);
+      alert(error.message || "Failed to create order. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
