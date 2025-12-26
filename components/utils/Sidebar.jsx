@@ -82,7 +82,7 @@ function Sidebar({ show, setShow }) {
                       </div>
 
                       <button
-                        onClick={() => removeItemFromCart(item.id)}
+                        onClick={() => removeItemFromCart(item.id, item.name)}
                         className=""
                       >
                         <svg
