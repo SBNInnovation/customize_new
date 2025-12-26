@@ -1,5 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { toast } from "sonner";
 
 // Create the context
 const CartContext = createContext();
@@ -68,26 +69,32 @@ export const CartProvider = ({ children }) => {
   };
 
   // Function to remove an item from the cart
-  const removeItemFromCart = (itemId) => {
-    // alert the user before removing the item
-    const confirmRemove = window.confirm(
-      "Are you sure you want to remove this item from the cart?"
-    );
-    if (!confirmRemove) {
-      return;
-    }
-
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
-    // Clean up custom image and coordinates
-    setCustomImages((prev) => {
-      const newMap = new Map(prev);
-      newMap.delete(itemId);
-      return newMap;
-    });
-    setCustomCoordinates((prev) => {
-      const newMap = new Map(prev);
-      newMap.delete(itemId);
-      return newMap;
+  const removeItemFromCart = (itemId, itemName = "item") => {
+    // Show confirmation toast with action buttons
+    toast("Are you sure you want to remove this item from the cart?", {
+      action: {
+        label: "Remove",
+        onClick: () => {
+          setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+          // Clean up custom image and coordinates
+          setCustomImages((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(itemId);
+            return newMap;
+          });
+          setCustomCoordinates((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(itemId);
+            return newMap;
+          });
+          toast.success("Item removed from cart");
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+      duration: 5000,
     });
   };
 

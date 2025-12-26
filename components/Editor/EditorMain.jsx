@@ -1,8 +1,11 @@
 "use client";
 import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useCart } from "@/context/cartContext";
 import { UploadImage } from "@/functions/UploadImage";
+import { GetBrandModels, GetCaseTypes } from "@/functions/GetAllPhone";
+import CustomDropdown from "@/components/utils/CustomDropdown";
+import { toast } from "sonner";
 
 const Designs = [
   {
@@ -52,6 +55,7 @@ function EditorMain({ id, phone, product }) {
   const [model, setModel] = useState("");
   const [singleModel, setSingleModel] = useState(null);
   const [activeVariant, setActiveVariant] = useState(null);
+  const [caseTypes, setCaseTypes] = useState([]);
   const [laptopSize, setLaptopSize] = useState({
     height: 0,
     width: 0,
@@ -65,34 +69,146 @@ function EditorMain({ id, phone, product }) {
   const design = Designs.find((design) => design?.title === id);
   const imgref = useRef(null);
 
-  useEffect(() => {
-    if (!brand) return;
-    if (!!brand) {
-      const filtered = product.filter((item) => item._id === brand);
-      const containsTemplate = filtered[0]?.models.filter(
-        (item) => item.templateImg
-      );
-      console.log(containsTemplate);
-      setModels(containsTemplate);
+  // Display all brands (no filtering)
+  const filteredBrands = useMemo(() => {
+    console.log("=== BRANDS DEBUG ===");
+    console.log("All brands (product array):", product);
+    console.log("Number of brands:", product?.length || 0);
+    
+    if (!product || !Array.isArray(product)) {
+      return [];
     }
+    
+    console.log("All brands (showing all, no filter):", product.map(b => ({ name: b.name, _id: b._id, isActivate: b.isActivate })));
+    console.log("===================");
+    return product;
+  }, [product]);
+
+  // Convert brands to dropdown options
+  const brandOptions = useMemo(() => {
+    return filteredBrands.map((brand) => ({
+      value: brand._id,
+      label: brand.name,
+    }));
+  }, [filteredBrands]);
+
+  // Convert models to dropdown options
+  const modelOptions = useMemo(() => {
+    return models.map((model) => ({
+      value: model._id,
+      label: model.name,
+    }));
+  }, [models]);
+
+  useEffect(() => {
+    if (!brand) {
+      setModels([]);
+      setModel("");
+      setSingleModel(null);
+      return;
+    }
+    
+    async function fetchModels() {
+      try {
+        console.log("=== MODELS DEBUG ===");
+        console.log("Fetching models for brand ID:", brand);
+        const brandData = await GetBrandModels(brand);
+        console.log("Brand data response:", brandData);
+        
+        // Handle different response formats: could be { models: [...] } or just [...]
+        const modelsArray = Array.isArray(brandData) 
+          ? brandData 
+          : brandData?.models || [];
+        console.log("Models array (before filtering):", modelsArray);
+        console.log("Number of models (before filtering):", modelsArray.length);
+        
+        // Filter models: must be active (isActivate === true)
+        const activeModels = modelsArray.filter(
+          (item) => item.isActivate === true
+        );
+        console.log("Active models (after filtering):", activeModels.map(m => ({ 
+          name: m.name, 
+          _id: m._id, 
+          isActivate: m.isActivate,
+          hasTemplateImg: !!m.templateImg,
+          ratio: m.ratio
+        })));
+        console.log("Number of active models:", activeModels.length);
+        console.log("===================");
+        
+        setModels(activeModels);
+        // Reset model selection when brand changes
+        setModel("");
+        setSingleModel(null);
+      } catch (error) {
+        console.error("Error fetching models:", error);
+        setModels([]);
+      }
+    }
+    
+    fetchModels();
   }, [brand]);
 
   useEffect(() => {
     if (!!model) {
       const filtered = models.filter((item) => item._id === model);
-      setSingleModel(filtered[0]);
-      const variant = filtered[0]?.caseTypes[0]?._id;
-      setActiveVariant(variant);
+      const selectedModel = filtered[0];
+      setSingleModel(selectedModel);
+      
+      // Fetch caseTypes if they are IDs
+      async function fetchCaseTypes() {
+        if (selectedModel?.caseTypes && selectedModel.caseTypes.length > 0) {
+          const firstCaseType = selectedModel.caseTypes[0];
+          
+          // Check if caseTypes are already objects or just IDs
+          if (typeof firstCaseType === 'object' && firstCaseType._id) {
+            // Already objects, use them directly
+            setCaseTypes(selectedModel.caseTypes);
+            setActiveVariant(firstCaseType._id);
+          } else {
+            // They are IDs, fetch the full caseType objects
+            try {
+              const fetchedCaseTypes = await GetCaseTypes(selectedModel.caseTypes);
+              if (fetchedCaseTypes && fetchedCaseTypes.length > 0) {
+                setCaseTypes(fetchedCaseTypes);
+                setActiveVariant(fetchedCaseTypes[0]._id);
+              } else {
+                // If fetch fails, use the IDs directly (fallback)
+                setCaseTypes(selectedModel.caseTypes.map(id => ({ _id: id, name: 'Case Type', price: selectedModel.price || 0 })));
+                setActiveVariant(selectedModel.caseTypes[0]);
+              }
+            } catch (error) {
+              console.error("Error fetching case types:", error);
+              // Fallback: use IDs directly
+              setCaseTypes(selectedModel.caseTypes.map(id => ({ _id: id, name: 'Case Type', price: selectedModel.price || 0 })));
+              setActiveVariant(selectedModel.caseTypes[0]);
+            }
+          }
+        } else {
+          setCaseTypes([]);
+          setActiveVariant(null);
+        }
+      }
+      
+      fetchCaseTypes();
+    } else {
+      setCaseTypes([]);
+      setActiveVariant(null);
     }
   }, [model]);
 
   async function handleAddToCart() {
-    if (!image) return alert("Please upload an image");
+    if (!image) {
+      toast.error("Please upload an image");
+      return;
+    }
     if (
       id === "laptopsleeves" &&
       (laptopSize.height === 0 || laptopSize.width === 0)
-    )
-      return alert("Please enter the size of your laptop");
+    ) {
+      toast.error("Please enter the size of your laptop");
+      return;
+    }
     setLoading(true);
 
     const variant =
@@ -111,12 +227,12 @@ function EditorMain({ id, phone, product }) {
       image: previewUrl, // Use blob URL for preview (will send actual file in order)
       variant: !phone
         ? variant
-        : singleModel?.caseTypes.find((item) => item._id === activeVariant)
+        : caseTypes.find((item) => item._id === activeVariant)
             ?.name,
       id: itemId,
       price: !phone
         ? design.price
-        : singleModel?.caseTypes.find((item) => item._id === activeVariant)
+        : caseTypes.find((item) => item._id === activeVariant)
             ?.price,
     };
 
@@ -131,7 +247,7 @@ function EditorMain({ id, phone, product }) {
     // Pass customImage (File) and coordinates to addItemToCart
     // The actual image file will be sent directly in the order, not uploaded to imgbb
     addItemToCart(data, image, customCaseCoordinates);
-    alert("Item added to cart");
+    toast.success("Item added to cart");
     setImage(null);
     setLoading(false);
     setActiveVariant(null);
@@ -216,7 +332,7 @@ function EditorMain({ id, phone, product }) {
               Rs:{" "}
               {!activeVariant
                 ? design?.price
-                : singleModel?.caseTypes.find(
+                : caseTypes.find(
                     (item) => item._id === activeVariant
                   )?.price}
             </p>
@@ -285,51 +401,34 @@ function EditorMain({ id, phone, product }) {
             {/* Phone model */}
             {phone && (
               <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <p className="text-gray-900">Select Brand </p>
-                    <span className="text-red-500">*</span>
-                  </div>
-                  <select
-                    onChange={(e) => setBrand(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="">Select Brand</option>
-                    {product.map((phone) => (
-                      <option key={phone._id} value={phone._id}>
-                        {phone.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <p className="text-gray-900">Select Model </p>
-                    <span className="text-red-500">*</span>
-                  </div>
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value === "") return;
-                      setModel(e.target.value);
-                    }}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="">Select Model</option>
-                    {models?.map((phone) => (
-                      <option key={phone._id} value={phone._id}>
-                        {phone.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <CustomDropdown
+                  options={brandOptions}
+                  value={brand}
+                  onChange={(value) => setBrand(value)}
+                  placeholder="Select Brand"
+                  label="Select Brand"
+                  required={true}
+                />
+                <CustomDropdown
+                  options={modelOptions}
+                  value={model}
+                  onChange={(value) => {
+                    if (value === "") return;
+                    setModel(value);
+                  }}
+                  placeholder="Select Model"
+                  label="Select Model"
+                  required={true}
+                  disabled={!brand || modelOptions.length === 0}
+                />
               </div>
             )}
 
-            {!!phone && !!singleModel && (
+            {!!phone && !!singleModel && caseTypes.length > 0 && (
               <div className="flex flex-flex-wrap gap-2">
-                {singleModel?.caseTypes?.map((type, index) => (
+                {caseTypes.map((type, index) => (
                   <div
-                    key={index}
+                    key={type._id || index}
                     className="flex gap-2 flex-col justify-center items-center"
                   >
                     <div
@@ -348,6 +447,21 @@ function EditorMain({ id, phone, product }) {
               </div>
             )}
 
+            {/* Ratio Display - Before Image Upload */}
+            {!!phone && !!singleModel && singleModel?.ratio && singleModel.ratio.width > 0 && singleModel.ratio.height > 0 && (
+              <div className="flex flex-col gap-2 p-3 bg-blue-50 rounded-md border border-blue-200">
+                <p className="text-sm font-semibold text-gray-900">
+                  Recommended Image Ratio:
+                </p>
+                <p className="text-lg font-bold text-blue-600">
+                  {singleModel.ratio.width}:{singleModel.ratio.height}
+                </p>
+                <p className="text-xs text-gray-600">
+                  Please upload an image with this aspect ratio for best results
+                </p>
+              </div>
+            )}
+
             {/* images */}
             <div className="flex gap-2 flex-col">
               {!!image && (
@@ -358,14 +472,19 @@ function EditorMain({ id, phone, product }) {
                     alt="custom"
                     className="w-20 h-20 object-cover border border-transparent"
                     style={{
-                      aspectRatio: `${design?.aspect[0]}/${design?.aspect[1]}`,
+                      aspectRatio: singleModel?.ratio 
+                        ? `${singleModel.ratio.width}/${singleModel.ratio.height}`
+                        : `${design?.aspect[0]}/${design?.aspect[1]}`,
                     }}
                   />
                   <p className="text-gray-900">
                     Be sure to maintain the aspect ratio of the image
                     <span className="text-red-500">
                       {" "}
-                      {design?.aspect[0]}:{design?.aspect[1]}
+                      {singleModel?.ratio 
+                        ? `${singleModel.ratio.width}:${singleModel.ratio.height}`
+                        : `${design?.aspect[0]}:${design?.aspect[1]}`
+                      }
                     </span>
                   </p>
                 </div>

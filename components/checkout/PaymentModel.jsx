@@ -2,6 +2,7 @@
 import { createOrder } from "@/functions/createOrder";
 import { useState } from "react";
 import { useCart } from "@/context/cartContext";
+import { toast } from "sonner";
 
 export default function PaymentModal({
   isOpen,
@@ -28,7 +29,7 @@ export default function PaymentModal({
 
   const handleUpload = async () => {
     if (!file) {
-      alert("Please upload the payment screenshot");
+      toast.error("Please upload the payment screenshot");
       return;
     }
     
@@ -58,7 +59,7 @@ export default function PaymentModal({
     try {
       // Validate cart before sending
       if (!cart || !Array.isArray(cart) || cart.length === 0) {
-        alert("Your cart is empty. Please add items to cart before placing order.");
+        toast.error("Your cart is empty. Please add items to cart before placing order.");
         setLoading(false);
         return;
       }
@@ -73,7 +74,7 @@ export default function PaymentModal({
       );
 
       if (validCartItems.length === 0) {
-        alert("No valid order items. Please check your cart items have name and price.");
+        toast.error("No valid order items. Please check your cart items have name and price.");
         setLoading(false);
         return;
       }
@@ -90,17 +91,20 @@ export default function PaymentModal({
         customCaseCoordinates
       );
 
-      if (res && res._id) {
+      if (res && res.data._id) {
         setSuccess(true);
         setOrder(res);
         clearCart();
-        window.location.href = ("https://casemandu.com.np/order/" + res._id)
+        toast.success("Order placed successfully!");
+        setTimeout(() => {
+          window.location.href = ("https://casemandu.com.np/order/" + res.data._id);
+        }, 1500);
       } else {
-        alert("Order creation failed. Please try again.");
+        toast.error("Order creation failed. Please try again.");
       }
     } catch (error) {
       console.error("Order creation error:", error);
-      alert(error.message || "Failed to create order. Please try again.");
+      toast.error(error.message || "Failed to create order. Please try again.");
     } finally {
       setLoading(false);
     }
