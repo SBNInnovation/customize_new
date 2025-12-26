@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import Payment from "./Payment";
 import { verifyPromo } from "@/functions/VerifyPromo";
 import PaymentModal from "./PaymentModel";
+import { toast } from "sonner";
 
 function CheckoutMain() {
   const { cartItems } = useCart();
@@ -125,10 +126,10 @@ function CheckoutMain() {
     if (!promo) return;
     const res = await verifyPromo(data.promo);
     if (res) {
-      alert("Promo code applied successfully");
+      toast.success("Promo code applied successfully");
       setPromo(res);
     } else {
-      alert("Promo code not valid");
+      toast.error("Promo code not valid");
     }
   }
 
@@ -148,11 +149,11 @@ function CheckoutMain() {
       data.address === "" ||
       data.email === ""
     ) {
-      alert("Please fill all the required fields");
+      toast.error("Please fill all the required fields");
       return false;
     }
     if (activePayment === null) {
-      alert("Please select a payment method");
+      toast.error("Please select a payment method");
       return false;
     }
     setShowPop(true);

@@ -22,7 +22,7 @@ function PhoneCases({ phone }) {
 
   useEffect(() => {
     // filter the phone so that templateImg is not null
-    const filteredPhone = phone.models.filter((item) => !!item.templateImg);
+    const filteredPhone = phone?.models?.filter((item) => !!item.templateImg);
     setData(filteredPhone);
 
   }, [phone]);

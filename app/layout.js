@@ -5,6 +5,7 @@ import Offers from "@/components/utils/Offers";
 import {Poppins} from "next/font/google"
 import { CartProvider } from "@/context/cartContext";
 import Releasing from "@/components/releasing/Releasing";
+import { Toaster } from "sonner";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -42,6 +43,7 @@ export default function RootLayout({ children }) {
       <body
       className={`${poppins.className}   antialiased`}
         >
+        <Toaster position="top-right" richColors />
         <Offers/>
         <Navbar />
         {children}
