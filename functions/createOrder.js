@@ -118,7 +118,7 @@ export async function createOrder(
     formData.append("customImage", customImage, customImage.name || "custom-image");
   }
 
-  const api = process.env.NEXT_PUBLIC_API_URL || "https://casemandu-api.casemandu.com.np";
+  const api = process.env.NEXT_PUBLIC_API_URL ||"https://casemandu-api.onrender.com";
 
   if (!api) {
     throw new Error("NEXT_PUBLIC_BACKEND environment variable is not set");
