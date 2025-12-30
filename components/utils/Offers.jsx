@@ -22,7 +22,6 @@ function Offers() {
     )
       .then((response) => response.json())
       .then((result) => {
-        console.log(result);
         setPromos(result);
         setLoading(false);
       })

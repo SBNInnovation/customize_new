@@ -111,14 +111,14 @@ export default function PaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-2 sm:p-4 md:p-5">
       <div
-        className="max-w-3xl w-full h-full overflow-y-auto my-5"
+        className="max-w-3xl w-full max-h-[95vh] overflow-y-auto"
         bis_skin_checked={1}
       >
         {!success && (
           <div
-            className="relative h-auto bg-white my-5 p-6"
+            className="relative h-auto bg-white rounded-lg p-4 sm:p-5 md:p-6 mx-auto"
             bis_skin_checked={1}
           >
             <svg
@@ -129,50 +129,52 @@ export default function PaymentModal({
               }}
               strokeWidth={0}
               viewBox="0 0 24 24"
-              className="rotate-45 w-8 h-8 absolute right-4 top-4 cursor-pointer hover:text-black/75 hover:bg-black/10 rounded-full duration-300 z-40"
+              className="rotate-45 w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 absolute right-2 top-2 sm:right-3 sm:top-3 md:right-4 md:top-4 cursor-pointer hover:text-black/75 hover:bg-black/10 rounded-full duration-300 z-40"
               height="1em"
               width="1em"
               xmlns="http://www.w3.org/2000/svg"
             >
               <path d="M11.75 4.5a.75.75 0 0 1 .75.75V11h5.75a.75.75 0 0 1 0 1.5H12.5v5.75a.75.75 0 0 1-1.5 0V12.5H5.25a.75.75 0 0 1 0-1.5H11V5.25a.75.75 0 0 1 .75-.75Z" />
             </svg>
-            <h1 className="text-2xl font-medium">
+            <h1 className="text-xl sm:text-2xl font-medium pr-8 sm:pr-10">
               Pay Now with
               <span className="text-primary"> {paymentQr.name}</span>
             </h1>
-            <p className="text-sm mt-3 text-gray-900">
-              “Pay <span className="font-semibold">Rs 300</span> per cover in
+            <p className="text-xs sm:text-sm mt-2 sm:mt-3 text-gray-900">
+              "Pay <span className="font-semibold">Rs 300</span> per cover in
               advance to confirm your order (e.g.,{" "}
               <span className="font-semibold">Rs 600</span> for{" "}
               <span className="font-semibold">2</span> covers), and settle the
-              rest upon delivery!”
+              rest upon delivery!"
             </p>
             <div
-              className="grid sm:grid-cols-2 gap-2 items-center sm:justify-center"
+              className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-start mt-4 sm:mt-5"
               bis_skin_checked={1}
             >
-              <div bis_skin_checked={1}>
-                <h2 className="mt-5 text-base text-gray-900">Payment Method</h2>
-                <img
-                  className="h-60 w-60 sm:h-72 sm:w-72 lg:h-80 lg:w-80 mt-5 border border-black object-contain rounded-lg"
-                  src={paymentQr.qr}
-                  alt="Khalti"
-                  width={710}
-                  height={710}
-                />
+              <div className="flex flex-col items-center sm:items-start" bis_skin_checked={1}>
+                <h2 className="text-sm sm:text-base text-gray-900 font-medium w-full text-center sm:text-left">Payment Method</h2>
+                <div className="w-full flex justify-center sm:justify-start mt-3 sm:mt-5">
+                  <img
+                    className="w-full max-w-[240px] sm:max-w-[280px] md:max-w-[320px] aspect-square border border-black object-contain rounded-lg"
+                    src={paymentQr.qr}
+                    alt="Khalti"
+                    width={710}
+                    height={710}
+                  />
+                </div>
               </div>
-              <div bis_skin_checked={1}>
-                <h2 className="mt-5 text-base text-gray-900">
+              <div className="flex flex-col items-center sm:items-start" bis_skin_checked={1}>
+                <h2 className="text-sm sm:text-base text-gray-900 font-medium w-full text-center sm:text-left">
                   Upload your Payment Screenshot{" "}
                   <span className="ms-1 text-red-500">*</span>
                 </h2>
                 <label
                   htmlFor="paymentImage"
-                  className="h-60 w-60 sm:h-72 sm:w-72 lg:h-80 lg:w-80 mt-3 flex flex-col items-center justify-center border-2 border-gray-300 border-dashed cursor-pointer bg-gray-50  hover:bg-gray-100"
+                  className="w-full max-w-[240px] sm:max-w-[280px] md:max-w-[320px] aspect-square mt-3 sm:mt-5 flex flex-col items-center justify-center border-2 border-gray-300 border-dashed cursor-pointer bg-gray-50 hover:bg-gray-100 rounded-lg"
                 >
                   {(!file && (
                     <div
-                      className="flex flex-col items-center justify-center pt-5 pb-6"
+                      className="flex flex-col items-center justify-center pt-5 pb-6 px-4"
                       bis_skin_checked={1}
                     >
                       <svg
@@ -180,7 +182,7 @@ export default function PaymentModal({
                         fill="currentColor"
                         strokeWidth={0}
                         viewBox="0 0 16 16"
-                        className="w-6 h-6 mb-4 text-gray-500"
+                        className="w-5 h-5 sm:w-6 sm:h-6 mb-3 sm:mb-4 text-gray-500"
                         height="1em"
                         width="1em"
                         xmlns="http://www.w3.org/2000/svg"
@@ -188,7 +190,7 @@ export default function PaymentModal({
                         <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
                         <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
                       </svg>
-                      <p className="mb-2 text-sm text-gray-500">
+                      <p className="mb-2 text-xs sm:text-sm text-gray-500 text-center">
                         Click to upload
                       </p>
                     </div>
@@ -198,7 +200,7 @@ export default function PaymentModal({
                       onDoubleClick={() => {
                         setFile(null);
                       }}
-                      className="h-60 w-60 sm:h-72 sm:w-72 lg:h-80 lg:w-80 object-cover rounded-lg"
+                      className="w-full h-full object-cover rounded-lg"
                       src={URL.createObjectURL(file)}
                       alt="payment"
                     />
@@ -217,7 +219,7 @@ export default function PaymentModal({
             <button
               onClick={handleUpload}
               disabled={loading}
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-purple text-white hover:bg-purple/90 h-10 px-4 py-2 mt-5 w-full"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-purple text-white hover:bg-purple/90 h-10 sm:h-11 px-4 py-2 mt-4 sm:mt-5 w-full"
             >
               {loading ? "Creating Order" : "Confirm Payment"}
             </button>
