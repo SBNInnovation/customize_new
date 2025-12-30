@@ -2,6 +2,8 @@
 import React, { useRef } from "react";
 import { useCart } from "@/context/cartContext";
 import Link from "next/link";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 function Sidebar({ show, setShow }) {
   const { cartItems, removeItemFromCart } = useCart();
@@ -31,6 +33,18 @@ function Sidebar({ show, setShow }) {
       }, 500);
     }
   }
+  const router = useRouter();
+
+  const handleCheckout = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (cartItems.length === 0) {
+      toast.error("Your cart is empty.");
+      return;
+    }
+    closeSidebar(e, true);
+    router.push("/checkout");
+  };
 
   return (
     <div
@@ -116,13 +130,13 @@ function Sidebar({ show, setShow }) {
             </div>
             {/* Checkout Button */}
             <div className="mt-4 w-full">
-              <Link
-                href={"/checkout"}
+              <button
+                onClick={(e) => handleCheckout(e)}
                 className="w-full bg-blue-600 p-2 rounded text-white hover:bg-blue-500 transition"
                 disabled={cartItems.length === 0}
               >
                 Checkout
-              </Link>
+                </button>
             </div>
           </nav>
         )) || (
@@ -136,7 +150,7 @@ function Sidebar({ show, setShow }) {
                   }}
                   className="text-white bg-red-400 hover:bg-red-500 p-1 rounded-full duration-300 h-6 w-6 flex items-center justify-center"
                 >
-                  x
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-400 hover:text-red-600 "></svg>
                 </button>
               </div>
               <p className="text-gray-800">Your cart is empty.</p>

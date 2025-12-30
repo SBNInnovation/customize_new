@@ -71,16 +71,11 @@ function EditorMain({ id, phone, product }) {
 
   // Display all brands (no filtering)
   const filteredBrands = useMemo(() => {
-    console.log("=== BRANDS DEBUG ===");
-    console.log("All brands (product array):", product);
-    console.log("Number of brands:", product?.length || 0);
     
     if (!product || !Array.isArray(product)) {
       return [];
     }
     
-    console.log("All brands (showing all, no filter):", product.map(b => ({ name: b.name, _id: b._id, isActivate: b.isActivate })));
-    console.log("===================");
     return product;
   }, [product]);
 
@@ -110,31 +105,17 @@ function EditorMain({ id, phone, product }) {
     
     async function fetchModels() {
       try {
-        console.log("=== MODELS DEBUG ===");
-        console.log("Fetching models for brand ID:", brand);
         const brandData = await GetBrandModels(brand);
-        console.log("Brand data response:", brandData);
         
         // Handle different response formats: could be { models: [...] } or just [...]
         const modelsArray = Array.isArray(brandData) 
           ? brandData 
           : brandData?.models || [];
-        console.log("Models array (before filtering):", modelsArray);
-        console.log("Number of models (before filtering):", modelsArray.length);
         
         // Filter models: must be active (isActivate === true)
         const activeModels = modelsArray.filter(
           (item) => item.isActivate === true
         );
-        console.log("Active models (after filtering):", activeModels.map(m => ({ 
-          name: m.name, 
-          _id: m._id, 
-          isActivate: m.isActivate,
-          hasTemplateImg: !!m.templateImg,
-          ratio: m.ratio
-        })));
-        console.log("Number of active models:", activeModels.length);
-        console.log("===================");
         
         setModels(activeModels);
         // Reset model selection when brand changes
