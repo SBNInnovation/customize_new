@@ -161,7 +161,8 @@ function CheckoutMain() {
 
   useEffect(() => {
     let grand = cartItems.reduce((acc, item) => {
-      return acc + item.price;
+      const itemPrice = typeof item.price === 'object' ? item.price?.price : item.price;
+      return acc + (Number(itemPrice) || 0);
     }, 0);
     setGrandTotal(grand);
   }, [cartItems]);
@@ -187,19 +188,21 @@ function CheckoutMain() {
                   <div className="flex items-center">
                     <img
                       src={item.image}
-                      alt={item.name}
+                      alt={typeof item.name === 'object' ? item.name?.name || 'Product' : item.name}
                       className="w-20 h-20 object-cover rounded-md mr-4"
                     />
                     <div className="flex flex-col gap-2">
                       <p>
                         <span className="font-semibold capitalize">
-                          {item.name}
+                          {typeof item.name === 'object' ? item.name?.name || 'Product' : item.name}
                         </span>
                       </p>
-                      <p className="text-gray-600/60">{item.variant}</p>
+                      <p className="text-gray-600/60">
+                        {typeof item.variant === 'object' ? item.variant?.name || 'Custom Design' : item.variant}
+                      </p>
                     </div>
                   </div>
-                  <p className="font-bold">Rs {item.price}</p>
+                  <p className="font-bold">Rs {typeof item.price === 'object' ? item.price?.price : item.price}</p>
                 </div>
               ))}
             </div>
@@ -229,7 +232,7 @@ function CheckoutMain() {
                     setData({ ...data, name: e.target.value });
                   }}
                   type="text"
-                  placeholder="Eg. Prashant Kafle"
+                  placeholder="Eg. John Doe"
                   className="w-full border rounded-md p-2"
                 />
               </div>
@@ -243,7 +246,7 @@ function CheckoutMain() {
                     setData({ ...data, email: e.target.value });
                   }}
                   type="email"
-                  placeholder="Eg. meprazhant@gmail.com"
+                  placeholder="Eg. john.doe@gmail.com"
                   className="w-full border rounded-md p-2"
                 />
               </div>

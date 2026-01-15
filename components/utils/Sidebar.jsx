@@ -9,8 +9,11 @@ function Sidebar({ show, setShow }) {
   const ref = useRef(null);
   const router = useRouter();
 
-  // Calculate total price
-  const totalPrice = cartItems.reduce((sum, item) => sum + (item?.price || 0), 0);
+  // Calculate total price (handle both primitive and object price values)
+  const totalPrice = cartItems.reduce((sum, item) => {
+    const itemPrice = typeof item?.price === 'object' ? item?.price?.price : item?.price;
+    return sum + (Number(itemPrice) || 0);
+  }, 0);
 
   // Handle body scroll lock when sidebar is open
   useEffect(() => {
@@ -201,13 +204,13 @@ function Sidebar({ show, setShow }) {
                   {/* Product Details */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 capitalize truncate">
-                      {item?.name}
+                      {typeof item?.name === 'object' ? item?.name?.name || 'Product' : item?.name}
                     </h3>
                     <p className="text-sm text-gray-500 mt-0.5 truncate">
-                      {item?.variant}
+                      {typeof item?.variant === 'object' ? item?.variant?.name || 'Custom Design' : item?.variant}
                     </p>
                     <p className="text-purple font-bold mt-2">
-                      NPR {item?.price?.toLocaleString()}
+                      NPR {(typeof item?.price === 'object' ? item?.price?.price : item?.price)?.toLocaleString()}
                     </p>
                   </div>
 

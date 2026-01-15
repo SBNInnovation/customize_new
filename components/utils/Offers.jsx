@@ -17,7 +17,7 @@ function Offers() {
     };
 
     fetch(
-      "https://casemandu-api.casemandu.com.np/api/promocodes",
+      "https://server.casemandu.com.np/api/promocodes",
       requestOptions
     )
       .then((response) => response.json())

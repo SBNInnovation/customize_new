@@ -692,45 +692,20 @@ function EditorMain({ id, phone, product }) {
                     disabled={loading}
                     className="flex items-center justify-center gap-2 py-4 px-6 bg-white border-2 border-gray-900 text-gray-900 rounded-xl font-semibold hover:bg-gray-900 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <svg
-                      className="w-5 h-5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <path
-                        d="M7.5 7.67V6.7c0-2.25 1.81-4.46 4.06-4.67a4.5 4.5 0 0 1 4.94 4.48v1.38M9 22h6c4.02 0 4.74-1.61 4.95-3.57l.75-6c.27-2.44-.43-4.43-4.7-4.43H8c-4.27 0-4.97 1.99-4.7 4.43l.75 6C4.26 20.39 4.98 22 9 22Z"
-                        strokeWidth="1.5"
-                        strokeMiterlimit="10"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    
                     {loading ? "Adding..." : "Add to Cart"}
                   </button>
                   <button
                     onClick={handleBuyNow}
                     disabled={loading}
-                    className="flex items-center justify-center gap-2 py-4 px-6 bg-purple text-white rounded-xl font-semibold hover:bg-purple/90 transition-all duration-200 shadow-lg shadow-purple/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center gap-2 py-4 px-6 bg-purple text-white rounded-xl font-semibold hover:bg-purple/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       "Processing..."
                     ) : (
                       <>
                         Buy Now
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 7l5 5m0 0l-5 5m5-5H6"
-                          />
-                        </svg>
+                        
                       </>
                     )}
                   </button>

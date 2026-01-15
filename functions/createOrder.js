@@ -1,3 +1,13 @@
+/**
+ * Create order with multiple custom images
+ * @param {Object} data - Customer data (name, email, phone, address, district, additionalInfo)
+ * @param {Array} cart - Cart items array
+ * @param {Object} promo - Promo code object
+ * @param {Number} grandTotal - Total amount
+ * @param {File} paymentImage - Payment screenshot file
+ * @param {String} paymentMethod - Payment method name
+ * @param {Array} customImagesArray - Array of {itemId, file, coordinates} for each custom item
+ */
 export async function createOrder(
   data,
   cart,
@@ -5,8 +15,7 @@ export async function createOrder(
   grandTotal,
   paymentImage,
   paymentMethod,
-  customImage = null,
-  customCaseCoordinates = null
+  customImagesArray = []
 ) {
   // Create FormData for multipart/form-data request
   const formData = new FormData();
@@ -26,7 +35,18 @@ export async function createOrder(
     throw new Error("Cart is empty. Please add items to cart before placing order.");
   }
 
-  // Transform cart items to match backend expected format (same as casemandu-client)
+  // Create a map of itemId to custom data for quick lookup
+  const customDataMap = new Map();
+  if (Array.isArray(customImagesArray)) {
+    customImagesArray.forEach((customData) => {
+      if (customData && customData.itemId) {
+        customDataMap.set(customData.itemId, customData);
+      }
+    });
+  }
+
+  // Transform cart items to match backend expected format
+  // Each item includes: qty, price, variant, isCustom, customImage (URL placeholder), customCaseCoordinates
   const orderItems = cart
     .filter((item) => {
       // More detailed validation
@@ -34,26 +54,55 @@ export async function createOrder(
         console.warn("Found null/undefined item in cart");
         return false;
       }
-      if (!item.name || item.name.trim() === "") {
+      // Handle name being either string or object
+      const itemName = typeof item.name === 'object' ? item.name?.name : item.name;
+      if (!itemName || (typeof itemName === 'string' && itemName.trim() === "")) {
         console.warn("Item missing name:", item);
         return false;
       }
-      if (item.price === undefined || item.price === null || isNaN(Number(item.price))) {
+      // Handle price being either number or object
+      const itemPrice = typeof item.price === 'object' ? item.price?.price : item.price;
+      if (itemPrice === undefined || itemPrice === null || isNaN(Number(itemPrice))) {
         console.warn("Item missing or invalid price:", item);
         return false;
       }
       return true;
     })
     .map((item) => {
-      // Backend expects orderItems with: name, qty, image, price, variant, product
-      // Match the format used in casemandu-client
+      // Check if this item has custom image data
+      const customData = customDataMap.get(item.id);
+      const hasCustomImage = !!customData && !!customData.file;
+      
+      // Handle cases where name, variant, or price might be objects instead of primitives
+      const itemName = typeof item.name === 'object' ? (item.name?.name || 'Product') : item.name;
+      const itemVariant = typeof item.variant === 'object' ? (item.variant?.name || 'Custom Design') : (item.variant || 'Custom Design');
+      const itemPrice = typeof item.price === 'object' ? Number(item.price?.price) : Number(item.price);
+      
+      // Backend expects orderItems with: qty, price, variant, isCustom, customCaseCoordinates
       const formattedItem = {
-        name: item.name,
+        name: itemName,
         qty: Number(item.qty) || 1,
-        price: Number(item.price) || 0,
-        variant: item.variant || "Custom Design",
-        image: item.image || "", // Include image URL for display
+        price: itemPrice || 0,
+        variant: itemVariant,
+        isCustom: hasCustomImage,
       };
+      
+      // Include customCaseCoordinates if available
+      if (customData && customData.coordinates) {
+        formattedItem.customCaseCoordinates = {
+          height: customData.coordinates.height || 0,
+          width: customData.coordinates.width || 0,
+          x: customData.coordinates.x || 0,
+          y: customData.coordinates.y || 0,
+        };
+      } else {
+        formattedItem.customCaseCoordinates = {
+          height: 0,
+          width: 0,
+          x: 0,
+          y: 0,
+        };
+      }
       
       // Include product ID if available (for phone cases)
       if (item.productId || item.product) {
@@ -121,18 +170,14 @@ export async function createOrder(
     formData.append("paymentImage", paymentImage, paymentImage.name || "payment-proof");
   }
 
-  // Send customCaseCoordinates as JSON string (or empty object if not provided)
-  if (customCaseCoordinates && typeof customCaseCoordinates === 'object' && Object.keys(customCaseCoordinates).length > 0) {
-    formData.append("customCaseCoordinates", JSON.stringify(customCaseCoordinates));
-  } else {
-    formData.append("customCaseCoordinates", "{}");
-  }
-
-  // Only append customImage if it exists and is a valid File/Blob
-  // Backend only accepts ONE customImage field
-  if (customImage && (customImage instanceof File || customImage instanceof Blob)) {
-    formData.append("customImage", customImage, customImage.name || "custom-image");
-  }
+  // Append multiple customImage files - one for each custom order item
+  // Files are appended in the same order as orderItems for backend to match them
+  cart.forEach((item) => {
+    const customData = customDataMap.get(item.id);
+    if (customData && customData.file && (customData.file instanceof File || customData.file instanceof Blob)) {
+      formData.append("customImage", customData.file, customData.file.name || `custom-${item.id}`);
+    }
+  });
 
   const api = process.env.NEXT_PUBLIC_API_URL ||"https://casemandu-api.onrender.com";
 

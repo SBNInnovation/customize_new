@@ -35,17 +35,17 @@ export default function PaymentModal({
     
     setLoading(true);
 
-    // Get custom image and coordinates for the first cart item
-    let customImage = null;
-    let customCaseCoordinates = null;
-
+    // Collect all custom images and coordinates for each cart item
+    const customImagesArray = [];
     for (const item of cart) {
       const img = getCustomImage(item.id);
       const coords = getCustomCoordinates(item.id);
       if (img) {
-        customImage = img;
-        customCaseCoordinates = coords || {};
-        break;
+        customImagesArray.push({
+          itemId: item.id,
+          file: img,
+          coordinates: coords || { height: 0, width: 0, x: 0, y: 0 },
+        });
       }
     }
 
@@ -57,14 +57,13 @@ export default function PaymentModal({
         return;
       }
 
-      // Validate cart items have required fields
-      const validCartItems = cart.filter(item => 
-        item && 
-        item.name && 
-        item.price !== undefined && 
-        item.price !== null && 
-        !isNaN(Number(item.price))
-      );
+      // Validate cart items have required fields (handle object values)
+      const validCartItems = cart.filter(item => {
+        if (!item) return false;
+        const itemName = typeof item.name === 'object' ? item.name?.name : item.name;
+        const itemPrice = typeof item.price === 'object' ? item.price?.price : item.price;
+        return itemName && itemPrice !== undefined && itemPrice !== null && !isNaN(Number(itemPrice));
+      });
 
       if (validCartItems.length === 0) {
         toast.error("No valid order items. Please check your cart items have name and price.");
@@ -72,7 +71,7 @@ export default function PaymentModal({
         return;
       }
 
-      // Use validated cart items
+      // Use validated cart items with all custom images
       const res = await createOrder(
         data,
         validCartItems,
@@ -80,8 +79,7 @@ export default function PaymentModal({
         grandTotal,
         file,
         paymentQr.name,
-        customImage,
-        customCaseCoordinates
+        customImagesArray
       );
 
       if (res && res.data._id) {
