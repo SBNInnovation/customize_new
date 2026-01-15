@@ -179,8 +179,11 @@ function CheckoutMain() {
               Check your items and select a suitable payment method.
             </p>
             <div className="flex flex-col gap-3">
-              {cartItems.map((item) => (
-                <div className="border p-4 rounded-md mb-4 flex justify-between items-center">
+              {cartItems.map((item, index) => (
+                <div
+                  key={`${item.id}-${index}`}
+                  className="border p-4 rounded-md mb-4 flex justify-between items-center"
+                >
                   <div className="flex items-center">
                     <img
                       src={item.image}
@@ -270,7 +273,9 @@ function CheckoutMain() {
                 >
                   <option value={""}>Select a district...</option>
                   {districts.map((district) => (
-                    <option value={district}>{district}</option>
+                    <option key={district} value={district}>
+                      {district}
+                    </option>
                   ))}
                 </select>
               </div>

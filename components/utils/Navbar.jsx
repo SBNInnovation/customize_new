@@ -1,14 +1,25 @@
 'use client'
 import Link from 'next/link';
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {useCart} from '@/context/cartContext'
 import Sidebar from './Sidebar';
 
 function Navbar() {
-  const {cartItems} = useCart()
+  const {cartItems, setOpenSidebarCallback} = useCart()
   const [showSidebar, setShowSidebar] = React.useState(false);
   const [showMobileMenu, setShowMobileMenu] = React.useState(false);
   const mobileMenuRef = useRef(null);
+
+  // Register callback to open sidebar when items are added to cart
+  useEffect(() => {
+    setOpenSidebarCallback(() => () => {
+      setShowSidebar(true);
+    });
+    // Cleanup function to remove callback when component unmounts
+    return () => {
+      setOpenSidebarCallback(null);
+    };
+  }, [setOpenSidebarCallback]);
 
   const closeMobileMenu = (e, forceClose = false) => {
     if (forceClose || (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target))) {

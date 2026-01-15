@@ -45,18 +45,33 @@ export async function createOrder(
       return true;
     })
     .map((item) => {
-      // Backend expects orderItems with only: qty, price, variant
-      // Based on successful API response structure
+      // Backend expects orderItems with: name, qty, image, price, variant, product
+      // Match the format used in casemandu-client
       const formattedItem = {
+        name: item.name,
         qty: Number(item.qty) || 1,
-        price: Number(item.price) || 0, // Ensure price is a number
+        price: Number(item.price) || 0,
         variant: item.variant || "Custom Design",
+        image: item.image || "", // Include image URL for display
       };
       
       // Include product ID if available (for phone cases)
-      // Some backends might require this field
       if (item.productId || item.product) {
         formattedItem.product = item.productId || item.product;
+      }
+      
+      // Include brand and model info for better order tracking
+      if (item.brandName) {
+        formattedItem.brandName = item.brandName;
+      }
+      if (item.modelName) {
+        formattedItem.modelName = item.modelName;
+      }
+      if (item.caseType) {
+        formattedItem.caseType = item.caseType;
+      }
+      if (item.productType) {
+        formattedItem.productType = item.productType;
       }
       
       return formattedItem;
@@ -114,6 +129,7 @@ export async function createOrder(
   }
 
   // Only append customImage if it exists and is a valid File/Blob
+  // Backend only accepts ONE customImage field
   if (customImage && (customImage instanceof File || customImage instanceof Blob)) {
     formData.append("customImage", customImage, customImage.name || "custom-image");
   }

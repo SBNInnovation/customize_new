@@ -35,25 +35,18 @@ export default function PaymentModal({
     
     setLoading(true);
 
-    // Get custom images and coordinates for cart items
-    // For now, we'll use the first custom image found (can be extended to handle multiple)
+    // Get custom image and coordinates for the first cart item
     let customImage = null;
     let customCaseCoordinates = null;
 
-    // Find the first cart item with a custom image
     for (const item of cart) {
       const img = getCustomImage(item.id);
       const coords = getCustomCoordinates(item.id);
       if (img) {
         customImage = img;
         customCaseCoordinates = coords || {};
-        break; // Use first custom image found
+        break;
       }
-    }
-
-    // If no custom image found but we have coordinates, still send coordinates
-    if (!customImage && customCaseCoordinates) {
-      // Keep coordinates even without image
     }
 
     try {

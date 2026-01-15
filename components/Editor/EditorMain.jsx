@@ -2,10 +2,10 @@
 import Link from "next/link";
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useCart } from "@/context/cartContext";
-import { UploadImage } from "@/functions/UploadImage";
 import { GetBrandModels, GetCaseTypes } from "@/functions/GetAllPhone";
 import CustomDropdown from "@/components/utils/CustomDropdown";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const Designs = [
   {
@@ -60,6 +60,7 @@ function EditorMain({ id, phone, product }) {
     height: 0,
     width: 0,
   });
+  const router = useRouter();
 
   useEffect(() => {
     const editor = document.getElementById("editor");
@@ -71,11 +72,9 @@ function EditorMain({ id, phone, product }) {
 
   // Display all brands (no filtering)
   const filteredBrands = useMemo(() => {
-    
     if (!product || !Array.isArray(product)) {
       return [];
     }
-    
     return product;
   }, [product]);
 
@@ -102,23 +101,17 @@ function EditorMain({ id, phone, product }) {
       setSingleModel(null);
       return;
     }
-    
+
     async function fetchModels() {
       try {
         const brandData = await GetBrandModels(brand);
-        
-        // Handle different response formats: could be { models: [...] } or just [...]
-        const modelsArray = Array.isArray(brandData) 
-          ? brandData 
+        const modelsArray = Array.isArray(brandData)
+          ? brandData
           : brandData?.models || [];
-        
-        // Filter models: must be active (isActivate === true)
         const activeModels = modelsArray.filter(
           (item) => item.isActivate === true
         );
-        
         setModels(activeModels);
-        // Reset model selection when brand changes
         setModel("");
         setSingleModel(null);
       } catch (error) {
@@ -126,7 +119,7 @@ function EditorMain({ id, phone, product }) {
         setModels([]);
       }
     }
-    
+
     fetchModels();
   }, [brand]);
 
@@ -135,33 +128,40 @@ function EditorMain({ id, phone, product }) {
       const filtered = models.filter((item) => item._id === model);
       const selectedModel = filtered[0];
       setSingleModel(selectedModel);
-      
-      // Fetch caseTypes if they are IDs
+
       async function fetchCaseTypes() {
         if (selectedModel?.caseTypes && selectedModel.caseTypes.length > 0) {
           const firstCaseType = selectedModel.caseTypes[0];
-          
-          // Check if caseTypes are already objects or just IDs
-          if (typeof firstCaseType === 'object' && firstCaseType._id) {
-            // Already objects, use them directly
+          if (typeof firstCaseType === "object" && firstCaseType._id) {
             setCaseTypes(selectedModel.caseTypes);
             setActiveVariant(firstCaseType._id);
           } else {
-            // They are IDs, fetch the full caseType objects
             try {
-              const fetchedCaseTypes = await GetCaseTypes(selectedModel.caseTypes);
+              const fetchedCaseTypes = await GetCaseTypes(
+                selectedModel.caseTypes
+              );
               if (fetchedCaseTypes && fetchedCaseTypes.length > 0) {
                 setCaseTypes(fetchedCaseTypes);
                 setActiveVariant(fetchedCaseTypes[0]._id);
               } else {
-                // If fetch fails, use the IDs directly (fallback)
-                setCaseTypes(selectedModel.caseTypes.map(id => ({ _id: id, name: 'Case Type', price: selectedModel.price || 0 })));
+                setCaseTypes(
+                  selectedModel.caseTypes.map((id) => ({
+                    _id: id,
+                    name: "Case Type",
+                    price: selectedModel.price || 0,
+                  }))
+                );
                 setActiveVariant(selectedModel.caseTypes[0]);
               }
             } catch (error) {
               console.error("Error fetching case types:", error);
-              // Fallback: use IDs directly
-              setCaseTypes(selectedModel.caseTypes.map(id => ({ _id: id, name: 'Case Type', price: selectedModel.price || 0 })));
+              setCaseTypes(
+                selectedModel.caseTypes.map((id) => ({
+                  _id: id,
+                  name: "Case Type",
+                  price: selectedModel.price || 0,
+                }))
+              );
               setActiveVariant(selectedModel.caseTypes[0]);
             }
           }
@@ -170,7 +170,7 @@ function EditorMain({ id, phone, product }) {
           setActiveVariant(null);
         }
       }
-      
+
       fetchCaseTypes();
     } else {
       setCaseTypes([]);
@@ -178,17 +178,17 @@ function EditorMain({ id, phone, product }) {
     }
   }, [model]);
 
-  async function handleAddToCart() {
+  function addCurrentItemToCart() {
     if (!image) {
       toast.error("Please upload an image");
-      return;
+      return false;
     }
     if (
       id === "laptopsleeves" &&
       (laptopSize.height === 0 || laptopSize.width === 0)
     ) {
       toast.error("Please enter the size of your laptop");
-      return;
+      return false;
     }
     setLoading(true);
 
@@ -197,156 +197,295 @@ function EditorMain({ id, phone, product }) {
         ? `Height : ${laptopSize?.height} , Width : ${laptopSize?.width} (In Inches)`
         : "Custom Design";
 
-    const itemId = Math.floor(Math.random() * 1000);
-    
-    // Create a preview URL for display in cart (using blob URL)
+    const itemId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const previewUrl = URL.createObjectURL(image);
-    
+
+    // Get brand name from filteredBrands
+    const selectedBrand = filteredBrands.find((b) => b._id === brand);
+    const selectedCaseType = caseTypes.find((item) => item._id === activeVariant);
+
     const data = {
       name: !phone ? design.title : singleModel?.name,
       qty: 1,
-      image: previewUrl, // Use blob URL for preview (will send actual file in order)
-      variant: !phone
-        ? variant
-        : caseTypes.find((item) => item._id === activeVariant)
-            ?.name,
+      image: previewUrl,
+      variant: !phone ? variant : selectedCaseType?.name,
       id: itemId,
-      price: !phone
-        ? design.price
-        : caseTypes.find((item) => item._id === activeVariant)
-            ?.price,
+      price: !phone ? design.price : selectedCaseType?.price,
+      // Additional fields for proper order tracking
+      productId: phone ? singleModel?._id : null,
+      brandName: phone ? selectedBrand?.name : null,
+      modelName: phone ? singleModel?.name : null,
+      caseType: phone ? selectedCaseType?.name : null,
+      productType: phone ? "phonecase" : design.title,
     };
 
-    // Create coordinates object (default center position, can be updated with actual crop/position data)
     const customCaseCoordinates = {
-      x: 0, // x position (can be updated based on actual positioning)
-      y: 0, // y position (can be updated based on actual positioning)
-      scale: 1, // scale factor (can be updated based on actual scaling)
-      rotation: 0, // rotation angle (can be updated based on actual rotation)
+      x: 0,
+      y: 0,
+      scale: 1,
+      rotation: 0,
     };
 
-    // Pass customImage (File) and coordinates to addItemToCart
-    // The actual image file will be sent directly in the order, not uploaded to imgbb
     addItemToCart(data, image, customCaseCoordinates);
     toast.success("Item added to cart");
     setImage(null);
     setLoading(false);
     setActiveVariant(null);
     setLaptopSize({ height: 0, width: 0 });
+    return true;
+  }
+
+  function handleAddToCart() {
+    addCurrentItemToCart();
+  }
+
+  function handleBuyNow() {
+    const added = addCurrentItemToCart();
+    if (added) {
+      router.push("/checkout");
+    }
   }
 
   if (!design) return <h1>Design not found</h1>;
 
+  const currentPrice = !activeVariant
+    ? design?.price
+    : caseTypes.find((item) => item._id === activeVariant)?.price;
+
   return (
-    <div className="flex flex-col gap-5 md:p-10 p-4">
-      <div className="flex gap-2 items-center">
-        <Link
-          href={"/"}
-          className="text-gray-400 cursor-pointer hover:text-blue-400 duration-300"
-        >
-          Home
-        </Link>
-        <p className="text-gray-400">&gt;</p>
-        <p className="text-gray-400">{design?.title}</p>
-      </div>
-
-      <div
-        id="editor"
-        className="
-         py-5 flex flex-col md:flex-row items-center justify-center  gap-4
-        "
-      >
-        {/* preview Screen */}
-        <div
-          className="
-                 md:w-1/2 w-full relative   rounded-md  bg-white flex justify-center items-center h-full
-                "
-        >
-          <div
-            className="relative bg-red-500  "
-            style={{
-              width: `${design?.aspect[0] * 500}px`,
-            }}
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm mb-8">
+          <Link
+            href="/"
+            className="text-gray-500 hover:text-purple transition-colors duration-200 flex items-center gap-1"
           >
-            <div
-              className="flex overflow-hidden  bg-red-300 "
-              style={{
-                backgroundImage:
-                  (!!image && `url(${URL.createObjectURL(image)})`) ||
-                  "url(https://i.ibb.co/TqJNrL0/custom-Design.png)",
-                backgroundSize: "cover",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "center",
-              }}
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              <img
-                onDoubleClick={() => {
-                  document.getElementById("file").click();
-                }}
-                ref={imgref}
-                src={`${
-                  !!singleModel
-                    ? singleModel?.templateImg ||
-                      "https://i.ibb.co/tYZn2VV/template.png"
-                    : design?.image
-                }`}
-                alt="preview"
-                className="z-20 w-full object-contain "
-                style={{}}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
               />
-            </div>
-          </div>
-          <div className="absolute z-30 -bottom-20 left-0 w-full bg-purple text-white p-2 rounded-md">
-            Warning: Final product may vary slightly in color and design
-            placement due to production processes.
-          </div>
-        </div>
+            </svg>
+            Home
+          </Link>
+          <svg
+            className="w-4 h-4 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+          <span className="text-gray-900 font-medium capitalize">
+            {design?.title}
+          </span>
+        </nav>
 
-        {/* editor */}
-        <div className=" md:w-1/2 w-full  bg-white rounded-md p-2 h-full flex flex-col gap-3    ">
-          <div className="flex flex-col gap-5">
-            <h1 className="md:text-3xl text-xl font-bold">
-              Customise <span className="capitalize ">{design?.title}</span>
-            </h1>
-            <div className="h-[1px] w-full bg-gray-300"></div>
-            <p className="text-black/80 md:text-3xl text-xl font-bold ">
-              Rs:{" "}
-              {!activeVariant
-                ? design?.price
-                : caseTypes.find(
-                    (item) => item._id === activeVariant
-                  )?.price}
-            </p>
-            <div className="h-[1px] w-full bg-gray-300"></div>
-            {/* write a short description */}
+        <div
+          id="editor"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12"
+        >
+          {/* Preview Section */}
+          <div className="flex flex-col gap-6">
+            <div className="relative bg-white rounded-2xl shadow-lg p-6 lg:p-10">
+              {/* Main Preview */}
+              <div
+                className="relative mx-auto overflow-hidden rounded-xl"
+                style={{
+                  maxWidth: `${design?.aspect[0] * 400}px`,
+                }}
+              >
+                <div
+                  className="relative w-full overflow-hidden rounded-xl"
+                  style={{
+                    backgroundImage:
+                      (!!image && `url(${URL.createObjectURL(image)})`) ||
+                      "url(https://i.ibb.co/TqJNrL0/custom-Design.png)",
+                    backgroundSize: "cover",
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "center",
+                  }}
+                >
+                  <img
+                    onDoubleClick={() => {
+                      document.getElementById("file").click();
+                    }}
+                    ref={imgref}
+                    src={`${
+                      !!singleModel
+                        ? singleModel?.templateImg ||
+                          "https://i.ibb.co/tYZn2VV/template.png"
+                        : design?.image
+                    }`}
+                    alt="preview"
+                    className="w-full object-contain cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+                  />
+                </div>
+              </div>
+
+              {/* Upload hint */}
+              {!image && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/5 rounded-2xl pointer-events-none">
+                  <div className="text-center p-4 bg-white/90 rounded-xl shadow-sm">
+                    <p className="text-gray-600 text-sm">
+                      Double-click to upload your design
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Warning Notice */}
+            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <svg
+                className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <p className="text-sm text-amber-800">
+                Final product may vary slightly in color and design placement
+                due to production processes.
+              </p>
+            </div>
+
+            {/* Chosen Design Preview */}
+            {!!image && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                <div className="flex items-center gap-4">
+                  <img
+                    src={URL.createObjectURL(image)}
+                    alt="Your design"
+                    className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                    style={{
+                      aspectRatio: singleModel?.ratio
+                        ? `${singleModel.ratio.width}/${singleModel.ratio.height}`
+                        : `${design?.aspect[0]}/${design?.aspect[1]}`,
+                    }}
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Your Design</p>
+                    <p className="text-sm text-gray-500">
+                      Recommended ratio:{" "}
+                      <span className="text-purple font-medium">
+                        {singleModel?.ratio
+                          ? `${singleModel.ratio.width}:${singleModel.ratio.height}`
+                          : `${design?.aspect[0]}:${design?.aspect[1]}`}
+                      </span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setImage(null)}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Product Details Section */}
+          <div className="flex flex-col gap-6">
+            {/* Product Header */}
+            <div className="space-y-4">
+              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 capitalize">
+                Custom {design?.title}
+              </h1>
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl lg:text-4xl font-bold text-purple">
+                  Rs. {currentPrice?.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="h-px bg-gray-200" />
+
+            {/* Description */}
             {!phone && (
-              <div className="flex">
-                {(!!design?.desc && (
-                  <p className="text-sm text-gray-900/80">{design?.desc}</p>
-                )) || (
-                  <p className="text-sm text-gray-700/80 ">
-                    How to customise your {design?.title}? <br />
-                    1. Click on the upload button below <br />
-                    2. Resize and adjust the image <br />
-                    3. Upload your image <br />
-                    4. Click on the Order button <br />
-                    5. Fill in the details and place the order
-                  </p>
+              <div className="prose prose-gray">
+                {design?.desc ? (
+                  <p className="text-gray-600 leading-relaxed">{design.desc}</p>
+                ) : (
+                  <div className="bg-gray-50 rounded-xl p-5">
+                    <h3 className="font-semibold text-gray-900 mb-3">
+                      How to customize:
+                    </h3>
+                    <ol className="space-y-2 text-gray-600">
+                      <li className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-purple text-white text-sm font-medium rounded-full flex items-center justify-center">
+                          1
+                        </span>
+                        <span>Click upload button below</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-purple text-white text-sm font-medium rounded-full flex items-center justify-center">
+                          2
+                        </span>
+                        <span>Resize and adjust your image</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-purple text-white text-sm font-medium rounded-full flex items-center justify-center">
+                          3
+                        </span>
+                        <span>Add to cart or buy now</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <span className="flex-shrink-0 w-6 h-6 bg-purple text-white text-sm font-medium rounded-full flex items-center justify-center">
+                          4
+                        </span>
+                        <span>Complete your order</span>
+                      </li>
+                    </ol>
+                  </div>
                 )}
               </div>
             )}
-            {/* laptop sleeves */}
+
+            {/* Laptop Sleeves Size Input */}
             {id === "laptopsleeves" && (
-              <div className="flex flex-col  gap-5">
-                <p className="text-gray-900">
-                  Enter the size of your laptop (in Inches)
-                </p>
-                <div className="flex gap-3 items-center">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <p className="text-gray-900">Height </p>
-                      <span className="text-red-500">*</span>
-                    </div>
+              <div className="bg-gray-50 rounded-xl p-5 space-y-4">
+                <h3 className="font-semibold text-gray-900">
+                  Laptop Dimensions{" "}
+                  <span className="text-red-500 text-sm">(Required)</span>
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Height (inches)
+                    </label>
                     <input
                       onChange={(e) => {
                         if (isNaN(e.target.value)) return;
@@ -355,123 +494,152 @@ function EditorMain({ id, phone, product }) {
                           height: e.target.value,
                         });
                       }}
-                      defaultValue={laptopSize.height}
+                      defaultValue={laptopSize.height || ""}
                       type="text"
-                      className="w-full p-2 border border-gray-300 rounded-md"
+                      placeholder="e.g., 10"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple focus:border-transparent transition-all"
                     />
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <p className="text-gray-900">Width </p>
-                      <span className="text-red-500">*</span>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Width (inches)
+                    </label>
                     <input
-                      defaultValue={laptopSize.width}
+                      defaultValue={laptopSize.width || ""}
                       onChange={(e) => {
                         if (isNaN(e.target.value)) return;
                         setLaptopSize({ ...laptopSize, width: e.target.value });
                       }}
                       type="text"
-                      className="w-full p-2 border border-gray-300 rounded-md"
+                      placeholder="e.g., 14"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Phone model */}
+            {/* Phone Model Selection */}
             {phone && (
-              <div className="flex flex-col gap-5">
-                <CustomDropdown
-                  options={brandOptions}
-                  value={brand}
-                  onChange={(value) => setBrand(value)}
-                  placeholder="Select Brand"
-                  label="Select Brand"
-                  required={true}
-                />
-                <CustomDropdown
-                  options={modelOptions}
-                  value={model}
-                  onChange={(value) => {
-                    if (value === "") return;
-                    setModel(value);
-                  }}
-                  placeholder="Select Model"
-                  label="Select Model"
-                  required={true}
-                  disabled={!brand || modelOptions.length === 0}
-                />
-              </div>
-            )}
-
-            {!!phone && !!singleModel && caseTypes.length > 0 && (
-              <div className="flex flex-flex-wrap gap-2">
-                {caseTypes.map((type, index) => (
-                  <div
-                    key={type._id || index}
-                    className="flex gap-2 flex-col justify-center items-center"
-                  >
-                    <div
-                      onClick={() => setActiveVariant(type._id)}
-                      className={`flex border duration-300 cursor-pointer border-black p-2 ${
-                        activeVariant === type._id
-                          ? "bg-black text-white"
-                          : "bg-transparent text-black"
-                      }  `}
-                    >
-                      {type?.name}
-                    </div>
-                    <p className="text-gray-900">Rs: {type?.price}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Ratio Display - Before Image Upload */}
-            {!!phone && !!singleModel && singleModel?.ratio && singleModel.ratio.width > 0 && singleModel.ratio.height > 0 && (
-              <div className="flex flex-col gap-2 p-3 bg-blue-50 rounded-md border border-blue-200">
-                <p className="text-sm font-semibold text-gray-900">
-                  Recommended Image Ratio:
-                </p>
-                <p className="text-lg font-bold text-blue-600">
-                  {singleModel.ratio.width}:{singleModel.ratio.height}
-                </p>
-                <p className="text-xs text-gray-600">
-                  Please upload an image with this aspect ratio for best results
-                </p>
-              </div>
-            )}
-
-            {/* images */}
-            <div className="flex gap-2 flex-col">
-              {!!image && (
-                <div className="flex flex-col">
-                  <p className="text-gray-900">Choosen Design</p>
-                  <img
-                    src={URL.createObjectURL(image)}
-                    alt="custom"
-                    className="w-20 h-20 object-cover border border-transparent"
-                    style={{
-                      aspectRatio: singleModel?.ratio 
-                        ? `${singleModel.ratio.width}/${singleModel.ratio.height}`
-                        : `${design?.aspect[0]}/${design?.aspect[1]}`,
-                    }}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900">
+                  Select Your Device
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <CustomDropdown
+                    options={brandOptions}
+                    value={brand}
+                    onChange={(value) => setBrand(value)}
+                    placeholder="Select Brand"
+                    label="Brand"
+                    required={true}
                   />
-                  <p className="text-gray-900">
-                    Be sure to maintain the aspect ratio of the image
-                    <span className="text-red-500">
-                      {" "}
-                      {singleModel?.ratio 
-                        ? `${singleModel.ratio.width}:${singleModel.ratio.height}`
-                        : `${design?.aspect[0]}:${design?.aspect[1]}`
-                      }
-                    </span>
-                  </p>
+                  <CustomDropdown
+                    options={modelOptions}
+                    value={model}
+                    onChange={(value) => {
+                      if (value === "") return;
+                      setModel(value);
+                    }}
+                    placeholder="Select Model"
+                    label="Model"
+                    required={true}
+                    disabled={!brand || modelOptions.length === 0}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Case Type Selection */}
+            {!!phone && !!singleModel && caseTypes.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900">
+                  Choose Case Type
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {caseTypes.map((type, index) => (
+                    <button
+                      key={type._id || index}
+                      onClick={() => setActiveVariant(type._id)}
+                      className={`relative p-4 rounded-xl border-2 transition-all duration-200 ${
+                        activeVariant === type._id
+                          ? "border-purple bg-purple/5 shadow-md"
+                          : "border-gray-200 hover:border-gray-300 bg-white"
+                      }`}
+                    >
+                      {activeVariant === type._id && (
+                        <div className="absolute top-2 right-2 w-5 h-5 bg-purple rounded-full flex items-center justify-center">
+                          <svg
+                            className="w-3 h-3 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={3}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                      <span
+                        className={`block font-medium ${
+                          activeVariant === type._id
+                            ? "text-purple"
+                            : "text-gray-900"
+                        }`}
+                      >
+                        {type?.name}
+                      </span>
+                      <span className="block text-sm text-gray-500 mt-1">
+                        Rs. {type?.price?.toLocaleString()}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ratio Display */}
+            {!!phone &&
+              !!singleModel &&
+              singleModel?.ratio &&
+              singleModel.ratio.width > 0 &&
+              singleModel.ratio.height > 0 && (
+                <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <svg
+                    className="w-5 h-5 text-blue-500 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">
+                      Recommended Image Ratio:{" "}
+                      <span className="font-bold">
+                        {singleModel.ratio.width}:{singleModel.ratio.height}
+                      </span>
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      Upload an image with this ratio for best results
+                    </p>
+                  </div>
                 </div>
               )}
-            </div>
-            <div className="flex flex-wrap gap-2 justify-center items-center p-5 border-dashed rounded-md ">
+
+            <div className="h-px bg-gray-200" />
+
+            {/* Action Buttons */}
+            <div className="space-y-4">
               <input
                 disabled={loading}
                 onChange={(e) => {
@@ -483,109 +651,107 @@ function EditorMain({ id, phone, product }) {
                 accept="image/*"
                 className="hidden"
               />
+
+              {/* Upload Button */}
               <label
                 htmlFor="file"
-                className="
-                          md:w-auto w-full flex items-center justify-center bg-purple text-white px-5 py-2 rounded-md cursor-pointer hover:bg-purple/80 duration-300
-                          "
+                className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-purple hover:bg-purple/5 transition-all duration-200 group"
               >
-                <svg
-                  className="w-6 h-6 inline-block mr-2 text-white"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-                  <g
-                    id="SVGRepo_tracerCarrier"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  ></g>
-                  <g id="SVGRepo_iconCarrier">
-                    {" "}
-                    <path
-                      className="upDown"
-                      d="M12 15L12 2M12 2L15 5.5M12 2L9 5.5"
-                      stroke="#ffffff5c"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    ></path>{" "}
-                    <path
-                      d="M8 22.0002H16C18.8284 22.0002 20.2426 22.0002 21.1213 21.1215C22 20.2429 22 18.8286 22 16.0002V15.0002C22 12.1718 22 10.7576 21.1213 9.8789C20.3529 9.11051 19.175 9.01406 17 9.00195M7 9.00195C4.82497 9.01406 3.64706 9.11051 2.87868 9.87889C2 10.7576 2 12.1718 2 15.0002L2 16.0002C2 18.8286 2 20.2429 2.87868 21.1215C3.17848 21.4213 3.54062 21.6188 4 21.749"
-                      stroke="#ffffff"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    ></path>{" "}
-                  </g>
-                </svg>
-                Upload Image
-              </label>
-              {!!image && (
-                <button
-                  onClick={handleAddToCart}
-                  disabled={loading}
-                  className="
-                          md:w-auto w-full bg-green-600 text-white px-5 py-2 rounded-md cursor-pointer hover:bg-green-800 duration-300
-                          "
-                >
+                <div className="p-2 bg-purple/10 rounded-lg group-hover:bg-purple/20 transition-colors">
                   <svg
-                    className="w-6 h-6 inline-block mr-2 text-white"
+                    className="w-6 h-6 text-purple"
                     viewBox="0 0 24 24"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
-                    stroke="#ffffff"
                   >
-                    <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-                    <g
-                      id="SVGRepo_tracerCarrier"
+                    <path
+                      d="M12 15L12 2M12 2L15 5.5M12 2L9 5.5"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                    ></g>
-                    <g id="SVGRepo_iconCarrier">
+                    />
+                    <path
+                      d="M8 22H16C18.8284 22 20.2426 22 21.1213 21.1213C22 20.2426 22 18.8284 22 16V15C22 12.1716 22 10.7574 21.1213 9.87868C20.3431 9.10051 19.1569 9.01406 17 9.00195M7 9.00195C4.84315 9.01406 3.65685 9.10051 2.87868 9.87868C2 10.7574 2 12.1716 2 15V16C2 18.8284 2 20.2426 2.87868 21.1213C3.17848 21.4211 3.54062 21.6186 4 21.7487"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+                <span className="font-medium text-gray-700 group-hover:text-purple transition-colors">
+                  {image ? "Change Image" : "Upload Your Design"}
+                </span>
+              </label>
+
+              {/* Add to Cart & Buy Now Buttons */}
+              {!!image && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={loading}
+                    className="flex items-center justify-center gap-2 py-4 px-6 bg-white border-2 border-gray-900 text-gray-900 rounded-xl font-semibold hover:bg-gray-900 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                    >
                       <path
-                        d="M7.2998 5H22L20 12H8.37675M21 16H9L7 3H4M4 8H2M5 11H2M6 14H2M10 20C10 20.5523 9.55228 21 9 21C8.44772 21 8 20.5523 8 20C8 19.4477 8.44772 19 9 19C9.55228 19 10 19.4477 10 20ZM21 20C21 20.5523 20.5523 21 20 21C19.4477 21 19 20.5523 19 20C19 19.4477 19.4477 19 20 19C20.5523 19 21 19.4477 21 20Z"
-                        stroke="#ffffff"
-                        strokeWidth="1.2"
+                        d="M7.5 7.67V6.7c0-2.25 1.81-4.46 4.06-4.67a4.5 4.5 0 0 1 4.94 4.48v1.38M9 22h6c4.02 0 4.74-1.61 4.95-3.57l.75-6c.27-2.44-.43-4.43-4.7-4.43H8c-4.27 0-4.97 1.99-4.7 4.43l.75 6C4.26 20.39 4.98 22 9 22Z"
+                        strokeWidth="1.5"
+                        strokeMiterlimit="10"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                      ></path>{" "}
-                    </g>
-                  </svg>
-                  {loading ? "Adding to cart..." : "Add to Cart"}
-                </button>
+                      />
+                    </svg>
+                    {loading ? "Adding..." : "Add to Cart"}
+                  </button>
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={loading}
+                    className="flex items-center justify-center gap-2 py-4 px-6 bg-purple text-white rounded-xl font-semibold hover:bg-purple/90 transition-all duration-200 shadow-lg shadow-purple/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      "Processing..."
+                    ) : (
+                      <>
+                        Buy Now
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 7l5 5m0 0l-5 5m5-5H6"
+                          />
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
+
           </div>
         </div>
       </div>
+
+      {/* Loading Overlay */}
       {loading && (
-        <div className="fixed z-50 top-0 left-0 h-full w-full bg-black/50 backdrop-grayscale flex justify-center items-center">
-          <div className="bg-white p-5 rounded-md shadow-md flex-col flex gap-3">
-            <div className="flex justify-center items-center">
-              <svg
-                className="animate-spin h-10 w-10 text-blue-600"
-                xmlns="http://www.w3.org/
-              2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                ></path>
-              </svg>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-purple/30 rounded-full animate-spin border-t-purple"></div>
             </div>
-            <h1 className="text-2xl font-bold">Adding Items to cart...</h1>
+            <p className="text-lg font-semibold text-gray-900">
+              Adding to cart...
+            </p>
           </div>
         </div>
       )}

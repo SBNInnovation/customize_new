@@ -11,6 +11,8 @@ export const CartProvider = ({ children }) => {
   // Store custom images and coordinates separately (can't store File in localStorage)
   const [customImages, setCustomImages] = useState(new Map());
   const [customCoordinates, setCustomCoordinates] = useState(new Map());
+  // Callback to open sidebar when item is added
+  const [openSidebarCallback, setOpenSidebarCallback] = useState(null);
 
   // Load cart data from localStorage on initial render
   useEffect(() => {
@@ -58,6 +60,10 @@ export const CartProvider = ({ children }) => {
         newMap.set(item.id, customCaseCoordinates);
         return newMap;
       });
+    }
+    // Open sidebar when item is added
+    if (openSidebarCallback) {
+      openSidebarCallback();
     }
   };
 
@@ -118,7 +124,8 @@ export const CartProvider = ({ children }) => {
         getCustomImage,
         getCustomCoordinates,
         customImages,
-        customCoordinates
+        customCoordinates,
+        setOpenSidebarCallback
       }}
     >
       {children}
